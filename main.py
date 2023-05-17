@@ -1,102 +1,164 @@
-from dotenv import load_dotenv
-from pypdf import PdfReader
-
-# Langchain
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.chains.question_answering import load_qa_chain
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS, Chroma
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
-from langchain.llms import OpenAI
-from langchain.chat_models import ChatOpenAI
 from langchain.callbacks import get_openai_callback
-
+from chatbot import PdfChatbot
+from dotenv import load_dotenv
 import streamlit as st
-import os
 from streamlit_chat import message
+from streamlit_option_menu import option_menu
+import base64
+import pyautogui
 
 
 load_dotenv()
 
 
-def main():
-    # api_key = os.getenv('OPENAI_API_KEY')
+style_text_input = f"""
+<style>
+    .stTextInput {{
+      position: fixed;
+      bottom: 3rem;
+    }}
+</style>
+"""
 
+style_spinner = f"""
+<style>
+    .stSpinner {{
+      position: fixed;
+      bottom: 8rem;
+    }}
+</style>
+"""
+
+style_avatar = f"""
+<style>
+    .css-kcb0to {{
+      width: 40px!important;
+      height: 40px!important;
+    }}
+</style>
+"""
+
+style_answer = f"""
+<style>
+    .css-w35l1k {{
+      margin: 2px 15px;
+    }}
+</style>
+"""
+
+
+
+
+# daily_cost = 0
+
+
+@st.cache_resource
+def setup_chain(file):
+    kpmg_chatbot = PdfChatbot()
+
+    kpmg_chatbot.read_pdf(file)
+    kpmg_chatbot.split_and_store_data()
+    chain = kpmg_chatbot.setup_chatbot()
+
+    return chain
+
+
+def show_pdf(file_path):
+    with open(file_path,"rb") as f:
+        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
+    st.markdown(pdf_display, unsafe_allow_html=True)
+
+
+def main():
+    # global daily_cost
+    # Set page configuration.
     st.set_page_config(page_title='KPMG Q&A Tool', page_icon=':question:')
-    st.sidebar.title('KPMG Q&A Tool')
+    st.markdown(style_spinner, unsafe_allow_html=True)
+    st.markdown(style_text_input, unsafe_allow_html=True)
+    st.markdown(style_avatar, unsafe_allow_html=True)
+    st.markdown(style_answer, unsafe_allow_html=True)
+
+
+    sidebar = st.sidebar
+    with sidebar:
+        st.title('KPMG Q&A Tool')
+        st.write('This is a tool that will help you to ask questions about the document and get the answer from the chatbot.')
+        
+        new_session = st.button("Start new session...")
+        if new_session:
+            pyautogui.hotkey('ctrl', 'f5')
+
+        
+        st.warning('Uploaded files will be shown here:')
+
+        file_placeholder = st.container()
 
     st.title('KPMG Q&A Tool')
 
-    uploaded_file = st.file_uploader('Upload your file', type=['pdf'])
 
-    container = st.container()
+    upload_placeholder = st.empty()
+    uploaded_file = upload_placeholder.file_uploader('Upload your file', type=['pdf'])
+    if uploaded_file:
+        with open(f"files/{uploaded_file.name}", "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-    
-    if uploaded_file is not None:
-        pdf = PdfReader(uploaded_file)
-        text = ""
-        for page in pdf.pages:
-            text += page.extract_text()
+        chain = setup_chain(f"files/{uploaded_file.name}")
 
-        with container:
-            with st.expander(f"Inhalt von {uploaded_file.name}"):
-                st.write(text)
+        with st.spinner():
+            st.info(f"Showing file {uploaded_file.name}")
+            with st.expander("Show Preview"):
+                st.success("Preview of the document")
+                show_pdf(f"files/{uploaded_file.name}")
 
-        
-        text_splitter = CharacterTextSplitter(
-            separator="\n",
-            chunk_size=1000,
-            chunk_overlap=100,
-            length_function=len
-        )
-
-        chunks = text_splitter.split_text(text)
-
-        # embeddings
-        embeddings = OpenAIEmbeddings()
-        knowledge_base = FAISS.from_texts(chunks, embeddings)
+        with file_placeholder:
+            st.success(uploaded_file.name)
+            upload_placeholder.empty()
 
 
-        # setup_chatbot(text)
-        
+        st.write("---")
 
-        question = st.text_input(label='Ask me anything 👇', placeholder='What is the main summary of the document?', key='search')
+        if "generated" not in st.session_state:
+            st.session_state["generated"] = []
+
+        if "past" not in st.session_state:
+            st.session_state["past"] = []
+
+            with st.spinner("Starting chatbot..."):
+                with get_openai_callback() as cb:
+                    response = chain.run(question="Give a short introduction to the document and give three questions that can be asked about the document as bullet points (make the bullet points easily visible).")
+
+                    # daily_cost += cb.total_cost
+
+                    st.session_state.generated.insert(0, response)
+
+
+
+        question = st.text_input(label='Ask me anything 👇', placeholder='', key='search')
+
+        spinner = st.spinner(text="Generating answer...")
+
 
         if question:
-            with container:
-                message(question, is_user=True)
+            with spinner:
+                with get_openai_callback() as cb:
+                    response = chain.run(question=question)
 
-            docs = knowledge_base.similarity_search(question)
+                # daily_cost += cb.total_cost
 
-            # llm = OpenAI(model_name="gpt-3.5-turbo")
-            llm = ChatOpenAI(model_name="gpt-3.5-turbo")
-            chain = load_qa_chain(llm, chain_type="map_reduce")
-            with get_openai_callback() as cb:
-                print("Chat")
-                response = chain.run(input_documents=docs, question=question)
-                print(cb)
-            
-            with container:
-                message(response)
+                st.session_state.past.insert(0, question)
+                st.session_state.generated.insert(0, response)
 
-
-def setup_chatbot(text):
-    embeddings = OpenAIEmbeddings()
-
-    vector_db = Chroma.from_texts(text, embeddings, persist_directory=".")
-    vector_db.persist()
-
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-
-    pdf_qa = ConversationalRetrievalChain.from_llm(
-        OpenAI(temperature=0.2, model_name="gpt-3.5-turbo"), 
-        vector_db.as_retriever(), 
-        memory=memory
-    )
+        if st.session_state["generated"]:
+            for i in range(len(st.session_state["generated"]) - 1, -1, -1):
+                try:
+                    message(st.session_state["past"][i], is_user=True, key=str(i) + "_user", avatar_style="initials", seed="TP")
+                except:
+                    pass
+                message(st.session_state["generated"][i], key=str(i), avatar_style="bottts", seed="Aneka")
 
 
-   
+
 
 
 if __name__ == '__main__':
