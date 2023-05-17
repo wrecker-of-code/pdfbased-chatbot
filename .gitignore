@@ -1,8 +1,8 @@
 # custom
 shit/
 .chroma/
-.streamlit/
-files/
+.streamlit/*
+files/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
