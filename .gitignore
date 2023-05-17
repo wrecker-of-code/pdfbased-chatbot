@@ -4,6 +4,10 @@ shit/
 .streamlit/*
 files/*
 
+# exception to the rule
+!.streamlit/.gitkeep
+!files/.gitkeep 
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
