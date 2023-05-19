@@ -51,8 +51,8 @@ class PdfChatbot():
     def setup_chatbot(self):
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-        llm = ChatOpenAI(temperature=0)
-        streaming_llm = ChatOpenAI(streaming=True, callbacks=BaseCallbackManager(handlers=[StreamingStdOutCallbackHandler, StreamlitCallbackHandler]), temperature=0)
+        llm = ChatOpenAI(temperature=0.5)
+        streaming_llm = ChatOpenAI(streaming=True, callbacks=BaseCallbackManager(handlers=[StreamingStdOutCallbackHandler, StreamlitCallbackHandler]), temperature=0.5)
 
         question_generator = LLMChain(llm=llm, prompt=CONDENSE_QUESTION_PROMPT)
         doc_chain = load_qa_chain(streaming_llm, chain_type="stuff", prompt=QA_PROMPT)

@@ -3,6 +3,7 @@ shit/
 .chroma/
 .streamlit/*
 files/*
+firestore-keys.json
 
 # exception to the rule
 !.streamlit/.gitkeep

@@ -4,49 +4,17 @@ from dotenv import load_dotenv
 import streamlit as st
 from streamlit_chat import message
 from streamlit_option_menu import option_menu
+from styles import *
 import base64
 import pyautogui
 
+import firebase_admin
+from firebase_admin import auth
+
+
+
 
 load_dotenv()
-
-
-style_text_input = f"""
-<style>
-    .stTextInput {{
-      position: fixed;
-      bottom: 3rem;
-    }}
-</style>
-"""
-
-style_spinner = f"""
-<style>
-    .stSpinner {{
-      position: fixed;
-      bottom: 8rem;
-    }}
-</style>
-"""
-
-style_avatar = f"""
-<style>
-    .css-kcb0to {{
-      width: 40px!important;
-      height: 40px!important;
-    }}
-</style>
-"""
-
-style_answer = f"""
-<style>
-    .css-w35l1k {{
-      margin: 2px 15px;
-    }}
-</style>
-"""
-
-
 
 
 # daily_cost = 0
@@ -70,18 +38,45 @@ def show_pdf(file_path):
     st.markdown(pdf_display, unsafe_allow_html=True)
 
 
+# def login_modal():
+#     email = st.text_input("Email")
+#     password = st.text_input("Password", type="password")
+#     if st.button("Login", key="login-button"):
+#         # Perform login logic here
+#         st.success("Logged in successfully!")
+
+
+# def signup_modal():
+#     email = st.text_input("Email")
+#     password = st.text_input("Password", type="password")
+#     confirm_password = st.text_input("Confirm Password", type="password")
+#     if st.button("Sign Up", key="signup-button"):
+#         # Perform signup logic here
+#         st.success("User created successfully!")
+
+
 def main():
     # global daily_cost
     # Set page configuration.
     st.set_page_config(page_title='KPMG Q&A Tool', page_icon=':question:')
     st.markdown(style_spinner, unsafe_allow_html=True)
     st.markdown(style_text_input, unsafe_allow_html=True)
-    st.markdown(style_avatar, unsafe_allow_html=True)
-    st.markdown(style_answer, unsafe_allow_html=True)
+    # st.markdown(style_avatar, unsafe_allow_html=True)
+    # st.markdown(style_answer, unsafe_allow_html=True)
+    # st.markdown(style_auth_buttons, unsafe_allow_html=True)
 
 
     sidebar = st.sidebar
     with sidebar:
+        # if st.button("Login", key="open-login"):
+        #     st.markdown("""---""")
+        #     login_modal()
+
+        # if st.button("Sign Up", key="open-signup"):
+        #     st.markdown("""---""")
+        #     signup_modal()
+
+
         st.title('KPMG Q&A Tool')
         st.write('This is a tool that will help you to ask questions about the document and get the answer from the chatbot.')
         
